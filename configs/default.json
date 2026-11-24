@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "kind": "template",
+  "data": {
+    "paper": "A4",
+    "custom": [
+      595,
+      842
+    ],
+    "landscape": false,
+    "margins": [
+      28,
+      28,
+      28,
+      42
+    ],
+    "count": 3,
+    "direction": "vertical",
+    "align": "center",
+    "gap": 12,
+    "slide_area": 0.52,
+    "background": "#ffffff",
+    "objects": [
+      {
+        "kind": "notes",
+        "box": [
+          320,
+          28,
+          246,
+          770
+        ],
+        "enabled": true,
+        "background": "#ffffff",
+        "border": "#bbbbbb",
+        "style": "blank",
+        "spacing": 18
+      }
+    ],
+    "number": {
+      "kind": "text",
+      "text": "{n}",
+      "box": [
+        28,
+        806,
+        539,
+        25
+      ],
+      "font": "Microsoft YaHei",
+      "size": 10,
+      "color": "#202020",
+      "background": "",
+      "border": "",
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "align": "center",
+      "angle": 0
+    },
+    "start": 1,
+    "chapter": 1,
+    "substart": 1,
+    "separator": "."
+  }
+}
