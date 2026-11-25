@@ -42,8 +42,13 @@ class ImportTest(unittest.TestCase):
                 editor.settings["number"]["text"]="{chapter}{sep}{sub}"
                 editor.pg["numbering"]=dict(chapter=2,sub=1)
                 project=folder/"lesson.json"
-                with patch.object(QFileDialog,"getSaveFileName",return_value=(str(project),"")):
-                    editor.save()
+                from src.configuration.store import write,read
+                write(project,"project",editor.state)
+                with patch.object(QFileDialog,"getOpenFileName",return_value=(str(project),"")):
+                    editor.open_project()
+                editor.save()
+                self.assertIn("embedded_pptx",read(project,"project")["source"])
+                path.unlink()
                 with patch.object(QFileDialog,"getOpenFileName",return_value=(str(project),"")):
                     editor.open_project()
                 output=folder/"handout.pdf"
@@ -56,4 +61,5 @@ class ImportTest(unittest.TestCase):
                     for expected in ["Original 3","Original 5","课堂笔记","2.1"]:
                         self.assertIn(expected,text)
             finally:
+                editor.hide()
                 editor.close()

@@ -19,17 +19,19 @@ def group(indices,count):
     return [page(indices[i:i+count]) for i in range(0,len(indices),count)] or [page()]
 def boxes(s,p,source):
     x,y,width,height=content_box(s)
-    n=max(1,len(p["slides"]))
+    n=max(1,s["count"],len(p["slides"]))
     cols={"vertical":1,"horizontal":n,"grid":ceil(sqrt(n))}[s["direction"]]
+    cols=s.get("columns") or cols
     rows=ceil(n/cols)
     gap=s["gap"]
     cw=(width-(cols-1)*gap)/cols
     ch=(height-(rows-1)*gap)/rows
     if min(cw,ch)<=0: raise ValueError("页面空间不足，请缩小边距或间隔")
     result=[]
-    cell_height=min(ch,min((cw/source[item["source"]].rect.width*source[item["source"]].rect.height for item in p["slides"]),default=ch))
-    for i,item in enumerate(p["slides"]):
-        rect=source[item["source"]].rect
+    if not p["slides"]:return []
+    aspects=[source[item["source"] if item["source"] is not None else 0].rect for item in p["slides"]]
+    cell_height=min(ch,min(cw/r.width*r.height for r in aspects))
+    for i,(item,rect) in enumerate(zip(p["slides"],aspects)):
         scale=min(cw/rect.width,cell_height/rect.height)
         a,bh=rect.width*scale,rect.height*scale
         offset={"left":0,"center":0.5,"right":1}[s["align"]]
@@ -63,6 +65,9 @@ def footer_box(settings):
     return [left,height-16-text_height,width-left-right,text_height]
 
 def object_box(settings,obj):
+    if obj["kind"]=="notes" and (obj.get("auto_box") or ("division" in settings and obj["box"]==DEFAULT["objects"][0]["box"])):
+        from .structure import boundaries
+        return boundaries(settings,settings.get("_page_index",0))[1] or obj["box"]
     if obj["kind"]=="notes" and obj["box"]==DEFAULT["objects"][0]["box"]:
         width,height=paper(settings)
         left,top,right,bottom=settings["margins"]
@@ -72,6 +77,9 @@ def object_box(settings,obj):
     return list(obj["box"])
 
 def content_box(settings):
+    if "division" in settings:
+        from .structure import boundaries
+        return boundaries(settings,settings.get("_page_index",0))[0]
     if settings.get("content_box") is not None:
         return list(settings["content_box"])
     width,height=paper(settings)
@@ -89,6 +97,13 @@ def title_object(state,index):
 
 def page_objects(state,index):
     settings=state["settings"]
-    objects=[o for o in settings["objects"] if o["kind"]!="title"]+state["pages"][index]["objects"]
+    from .structure import section_start
+    start=section_start(state["pages"],index)
+    section=state["pages"][start]
+    objects=[o for o in settings["objects"] if o["kind"]!="title"]+section.get("section_objects",[])+state["pages"][index]["objects"]
+    from .structure import section_band
+    for kind in ("header","footer"):
+        band=section_band(state["pages"],index,kind)
+        if band:objects.append(band)
     title=title_object(state,index)
     return objects+([title] if title else [])

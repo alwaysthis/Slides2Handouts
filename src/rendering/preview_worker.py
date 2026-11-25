@@ -14,6 +14,20 @@ def main():
     cache=OrderedDict()
     for line in sys.stdin:
         request=json.loads(line)
+        if "thumbnail_dir" in request:
+            state=request["state"]
+            with (pdf.open(request["source"]) if request["source"] else pdf.open()) as original:
+                for index in range(len(state["pages"])):
+                    try:
+                        with pdf.open() as doc:
+                            page=render(doc,original,state,index)
+                            scale=min(240/page.rect.width,320/page.rect.height)
+                            path=Path(request["thumbnail_dir"])/f"{index}.png"
+                            page.get_pixmap(matrix=pdf.Matrix(scale,scale),alpha=False).save(path)
+                        print(json.dumps({"index":index,"path":str(path)}),flush=True)
+                    except Exception as error:
+                        print(json.dumps({"index":index,"error":str(error)}),flush=True)
+            continue
         try:
             if request["source"]!=source_path:
                 if source:source.close()
@@ -22,9 +36,7 @@ def main():
                 source=pdf.open(request["source"]) if request["source"] else pdf.open()
                 source_path=request["source"]
             state=request["state"];index=request["index"]
-            from src.core.model import title_object
-            key=json.dumps([state["settings"],state["pages"][index],title_object(state,index),
-                            [p["numbering"] for p in state["pages"][:index]]],ensure_ascii=False)
+            key=json.dumps([index,state],ensure_ascii=False)
             if key not in cache:
                 doc=pdf.open()
                 try:render(doc,source,state,index)
@@ -36,7 +48,7 @@ def main():
                                        clip=pdf.Rect(request["clip"]),alpha=False)
             path=Path(request["output"])
             pix.save(path)
-            print(json.dumps({"id":request["id"],"path":str(path)}),flush=True)
+            print(json.dumps({"id":request["id"],"path":str(path),"pixel_box":[pix.x,pix.y,pix.width,pix.height]}),flush=True)
         except Exception as error:
             print(json.dumps({"id":request["id"],"error":str(error)}),flush=True)
     if source:source.close()

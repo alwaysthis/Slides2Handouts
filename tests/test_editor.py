@@ -21,6 +21,7 @@ class Editing(unittest.TestCase):
     def make_editor(self):
         editor=Editor();editor.show()
         self.addCleanup(editor.close)
+        self.addCleanup(editor.hide)
         APP.processEvents()
         return editor
     def test_grouping(self):

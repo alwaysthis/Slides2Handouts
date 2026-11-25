@@ -17,8 +17,14 @@
     "count": 3,
     "direction": "vertical",
     "align": "center",
-    "gap": 12,
+    "gap": 0.5,
     "slide_area": 0.52,
+    "division": "horizontal",
+    "notes_ratio": 0.36,
+    "region_gap": 3,
+    "alternate": true,
+    "odd_side": "left",
+    "even_side": "right",
     "background": "#ffffff",
     "objects": [
       {
@@ -41,11 +47,11 @@
       "text": "{n}",
       "box": [
         28,
-        806,
-        539,
-        25
+        815.1062,
+        539.28,
+        18
       ],
-      "font": "Microsoft YaHei",
+      "font": "Times New Roman",
       "size": 10,
       "color": "#202020",
       "background": "",
@@ -54,11 +60,13 @@
       "italic": false,
       "underline": false,
       "align": "center",
-      "angle": 0
+      "angle": 0,
+      "valign": "center"
     },
     "start": 1,
     "chapter": 1,
     "substart": 1,
-    "separator": "."
+    "separator": ".",
+    "notes_align": "center"
   }
 }

@@ -1,8 +1,10 @@
 import html
 import math
 import os
+import re
 import pymupdf as pdf
 from src.rendering.fonts import font_css
+from src.core.textstyles import styled,numbered_pages
 from src.core.model import paper, boxes, footer_box, object_box, page_objects
 
 def color(value):
@@ -13,6 +15,7 @@ def rect(box):
 def draw(page,o):
     r=rect(o["box"])
     if o.get("enabled") is False: return
+    if o["kind"]!="notes" and not o.get("text"):return
     bg=o.get("background")
     border=o.get("border")
     if o["kind"]=="notes":
@@ -35,6 +38,14 @@ def draw(page,o):
         family="Handout" if faces else o["font"]
         style=f"font-family:'{family}';font-size:{o['size']}pt;color:{o['color']};text-align:{o['align']}"
         content=html.escape(o["text"]).replace("\n","<br>")
+        if o.get("latin_font"):
+            latin=font_css(o["latin_font"],"HandoutLatin")
+            if latin:
+                faces+=latin
+                content="".join(f'<span style="font-family:HandoutLatin">{html.escape(part)}</span>'
+                                if part.isascii() and part!="\n" else html.escape(part).replace("\n","<br>")
+                                for part in re.findall(r"[ -~]+|[^ -~]",o["text"]))
+        style+=";white-space:pre-wrap"
         for key,tag in (("bold","b"),("italic","i"),("underline","u")):
             if o[key]: content=f"<{tag}>{content}</{tag}>"
         markup=f'<div style="{style}">{content}</div>'
@@ -55,28 +66,35 @@ def draw(page,o):
         page.show_pdf_page(pdf.Rect(cx-w/2,cy-h/2,cx+w/2,cy+h/2),layer,0,rotate=angle)
 
 def render(doc,source,state,index):
-    s=state["settings"]
+    from src.core.structure import contents,DisplayNumber,section_start
+    start=section_start(state["pages"],index)
+    s=state["settings"] | state["pages"][start].get("layout",{}) | state["pages"][index].get("page_layout",{}) | {"_page_index":index}
     p=state["pages"][index]
     out=doc.new_page(width=paper(s)[0],height=paper(s)[1])
     out.draw_rect(out.rect,color=None,fill=color(s["background"]))
-    objects=page_objects(state,index)
+    objects=[styled(s,obj) for obj in numbered_pages(state,index)]
     for o in objects:
-        if o["kind"]=="notes": draw(out,dict(o,box=object_box(s,o)))
+        if o["kind"]=="notes" and s.get("division")!="none": draw(out,dict(o,box=object_box(s,o)))
     for item,box in zip(p["slides"],boxes(s,p,source)):
+        if item["source"] is None:continue
         out.show_pdf_page(rect(box),source,item["source"])
+        if s.get("slide_border"):out.draw_rect(rect(box),color=(.35,.4,.37),width=.6)
     for o in objects:
-        if o["kind"]!="notes": draw(out,dict(o,box=object_box(s,o)))
+        if o["kind"]!="notes": draw(out,dict(o,box=object_box(s,o),text=contents(state) if o.get("toc") else o["text"]))
     chapter,sub,n=s["chapter"],s["substart"],s["start"]
     for pg in state["pages"][:index+1]:
+        if pg.get("section"):
+            chapter+=1
+            sub=s["substart"]
         rule=pg["numbering"]
         chapter=rule.get("chapter",chapter)
         sub=rule.get("sub",sub)
         n=rule.get("n",n)
         sub+=1
         n+=1
-    if not rule.get("hidden"):
+    if s.get("number_enabled",True) and not rule.get("hidden"):
         num=dict(s["number"],box=footer_box(s))
-        num["text"]=rule.get("label",num["text"]).format(n=n-1,chapter=chapter,sub=sub-1,sep=s["separator"])
+        num["text"]=rule.get("label",num["text"]).format(n=DisplayNumber(n-1,s.get("page_style","decimal")),chapter=DisplayNumber(chapter,s.get("section_style","decimal")),sub=DisplayNumber(sub-1,s.get("page_style","decimal")),sep=s["separator"])
         draw(out,num)
     return out
 

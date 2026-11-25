@@ -11,3 +11,13 @@ PPTX 导入由 rendering/worker.py 与 PowerPoint PowerShell 导出脚本完成�
 core/model.py 计算 content_box、自动原稿框、批注框和页脚。settings.content_box 为空时使用纸张与边距计算。pages[].title 为空或缺省时继承前页，第一段使用 settings.title 或旧 settings.objects 中的 title。独立标题保存完整文字对象。文字 valign 为 top、center、bottom，旧文件默认 top。
 
 rendering/pdfout.py 共用于预览与最终输出，以 show_pdf_page 保留源页矢量，叠加批注、文字、继承标题与页码。configuration/store.py 提供版本化 JSON 和原稿 SHA-256，同目录临时文件替换保存。
+
+## UI 组件约定
+
+应用内弹窗使用 gui/widgets.py 的 Dialog。外框、标题栏与居中逻辑在该类维护，确认、取消和继续按钮通过 add_buttons 创建；需要校验的弹窗传入接受回调。Windows 文件选择继续使用 QFileDialog 原生入口。
+
+gui/theme.py 维护全局样式和圆角表面绘制。主窗口、应用弹窗及下拉列表共用绘制函数，并各自指定颜色和半径。BIU 与字体选择控件供属性面板和样式设置复用。样式与编号器共用预设列表和设置面板结构。
+
+## 工程内嵌原稿
+
+导入时建立 PPTX 临时快照，转换与保存共用该快照。工程保存将原稿以 Base64 写入 source.embedded_pptx，SHA-256 用于校验。打开内嵌工程时解包至临时目录，载荷不进入编辑历史或预览进程请求。旧工程按原路径和指纹定位原稿。

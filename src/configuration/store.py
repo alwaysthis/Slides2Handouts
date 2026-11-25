@@ -1,3 +1,5 @@
+import base64
+import binascii
 import json
 import hashlib
 from pathlib import Path
@@ -18,3 +20,24 @@ def read(path,kind):
     record=json.loads(Path(path).read_text(encoding="utf8"))
     if record["version"]!=1 or record["kind"]!=kind: raise ValueError("配置类型或版本不匹配")
     return record["data"]
+
+def write_project(path,state,source_snapshot):
+    source=state.get("source")
+    if not source:
+        write(path,"project",state)
+        return
+    payload=Path(source_snapshot).read_bytes()
+    if hashlib.sha256(payload).hexdigest()!=source["sha256"]:
+        raise ValueError("原稿文件指纹不匹配，无法保存工程")
+    packaged=state | {"source":source | {"embedded_pptx":base64.b64encode(payload).decode("ascii")}}
+    write(path,"project",packaged)
+
+def unpack_project_source(source,destination):
+    try:
+        payload=base64.b64decode(source.pop("embedded_pptx"),validate=True)
+    except (ValueError,TypeError,binascii.Error) as error:
+        raise ValueError("工程中的内嵌 PPTX 已损坏") from error
+    if hashlib.sha256(payload).hexdigest()!=source["sha256"]:
+        raise ValueError("工程中的内嵌 PPTX 指纹不匹配")
+    destination.write_bytes(payload)
+    return destination
